@@ -5,8 +5,8 @@ import (
 	"math"
 	"slices"
 
-	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/ast"
-	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/object"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/ast"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/object"
 )
 
 const (
@@ -20,6 +20,8 @@ func Evaluate(node ast.Node, env *object.Environment) (object.Object, object.Int
 	switch node.Type() {
 	case ast.PROGRAM:
 		return evaluateProgram(node.(*ast.Program), env)
+	case ast.ERROR:
+		return nil, &object.Error{Message: node.(*ast.Error).Message}
 	case ast.LET_DECLARATION:
 		return evaluateLetDeclaration(node.(*ast.LetDeclaration), env)
 	case ast.RETURN_STATEMENT:
@@ -28,12 +30,14 @@ func Evaluate(node ast.Node, env *object.Environment) (object.Object, object.Int
 		return evaluateExpressionStatement(node.(*ast.ExpressionStatement), env)
 	case ast.BLOCK_STATEMENT:
 		return evaluateBlockStatement(node.(*ast.BlockStatement), env)
-	case ast.PREFIX_EXPRESSION:
-		return evaluatePrefixExpression(node.(*ast.PrefixExpression), env)
-	case ast.INFIX_EXPRESSION:
-		return evaluateInfixExpression(node.(*ast.InfixExpression), env)
-	case ast.IF_EXPRESSION:
-		return evaluateIfExpression(node.(*ast.IfExpression), env)
+	case ast.UNARY_EXPRESSION:
+		return evaluateUnaryExpression(node.(*ast.UnaryExpression), env)
+	case ast.BINARY_EXPRESSION:
+		return evaluateBinaryExpression(node.(*ast.BinaryExpression), env)
+	case ast.LOGICAL_EXPRESSION:
+		return evaluateLogicalExpression(node.(*ast.LogicalExpression), env)
+	case ast.CONDITIONAL_EXPRESSION:
+		return evaluateConditionalExpression(node.(*ast.ConditionalExpression), env)
 	case ast.FUNCTION_LITERAL:
 		return evaluateFunctionLiteral(node.(*ast.FunctionLiteral), env)
 	case ast.ASSIGNMENT_EXPRESSION:
@@ -45,19 +49,20 @@ func Evaluate(node ast.Node, env *object.Environment) (object.Object, object.Int
 	case ast.IDENTIFIER:
 		return evaluateIdentifier(node.(*ast.Identifier), env)
 	case ast.NUMBER_LITERAL:
-		return evaluateNumberLiteral(node.(*ast.NumberLiteral))
+		return object.Number(node.(*ast.NumberLiteral).Value), nil
 	case ast.BOOLEAN_LITERAL:
-		return evaluateBooleanLiteral(node.(*ast.BooleanLiteral))
+		return toBoolean(node.(*ast.BooleanLiteral).Value), nil
 	case ast.STRING_LITERAL:
-		return evaluateStringLiteral(node.(*ast.StringLiteral))
+		return object.String(node.(*ast.StringLiteral).Value), nil
 	case ast.ARRAY_LITERAL:
 		return evaluateArrayLiteral(node.(*ast.ArrayLiteral), env)
 	case ast.HASH_LITERAL:
 		return evaluateHashLiteral(node.(*ast.HashLiteral), env)
 	case ast.NULL_LITERAL:
-		return evaluateNullLiteral()
+		return NULL, nil
+	default:
+		panic(fmt.Errorf("unexpected node type: %T", node))
 	}
-	return nil, nil
 }
 
 func evaluateProgram(node *ast.Program, env *object.Environment) (object.Object, object.Interruption) {
@@ -108,7 +113,7 @@ func evaluateBlockStatement(node *ast.BlockStatement, env *object.Environment) (
 	return result, nil
 }
 
-func evaluatePrefixExpression(node *ast.PrefixExpression, env *object.Environment) (object.Object, object.Interruption) {
+func evaluateUnaryExpression(node *ast.UnaryExpression, env *object.Environment) (object.Object, object.Interruption) {
 	right, interrupt := Evaluate(node.Right, env)
 	if interrupt != nil {
 		return nil, interrupt
@@ -129,7 +134,7 @@ func evaluatePrefixExpression(node *ast.PrefixExpression, env *object.Environmen
 	return nil, toError("unknown operator: %s%s", node.Operator, right.Type())
 }
 
-func evaluateInfixExpression(node *ast.InfixExpression, env *object.Environment) (object.Object, object.Interruption) {
+func evaluateBinaryExpression(node *ast.BinaryExpression, env *object.Environment) (object.Object, object.Interruption) {
 	left, interrupt := Evaluate(node.Left, env)
 	if interrupt != nil {
 		return nil, interrupt
@@ -179,7 +184,33 @@ func evaluateInfixExpression(node *ast.InfixExpression, env *object.Environment)
 	return nil, toError("unknown operator: %s %s %s", left.Type(), node.Operator, right.Type())
 }
 
-func evaluateIfExpression(node *ast.IfExpression, env *object.Environment) (object.Object, object.Interruption) {
+func evaluateLogicalExpression(node *ast.LogicalExpression, env *object.Environment) (object.Object, object.Interruption) {
+	left, interrupt := Evaluate(node.Left, env)
+	if interrupt != nil {
+		return nil, interrupt
+	}
+
+	switch node.Operator {
+	case "or":
+		if isTruthy(left) {
+			return left, nil
+		}
+		return Evaluate(node.Right, env)
+	case "and":
+		if !isTruthy(left) {
+			return left, nil
+		}
+		return Evaluate(node.Right, env)
+	default:
+		right, interrupt := Evaluate(node.Right, env)
+		if interrupt != nil {
+			return nil, interrupt
+		}
+		return nil, toError("unknown operator: %s %s %s", left.Type(), node.Operator, right.Type())
+	}
+}
+
+func evaluateConditionalExpression(node *ast.ConditionalExpression, env *object.Environment) (object.Object, object.Interruption) {
 	condition, interrupt := Evaluate(node.Condition, env)
 	if interrupt != nil {
 		return nil, interrupt
@@ -262,10 +293,10 @@ func evaluateCallExpression(node *ast.CallExpression, env *object.Environment) (
 		return nil, interrupt
 	}
 
-	switch function := value.(type) {
+	switch callee := value.(type) {
 	case *object.Function:
-		environment := object.NewEnvironment(function.Closure)
-		for i, parameter := range function.Declaration.Parameters {
+		environment := object.NewEnvironment(callee.Closure)
+		for i, parameter := range callee.Literal.Parameters {
 			value, interrupt := Evaluate(node.Arguments[i], env)
 			if interrupt != nil {
 				return nil, interrupt
@@ -273,7 +304,7 @@ func evaluateCallExpression(node *ast.CallExpression, env *object.Environment) (
 			environment.Set(parameter.Value, value)
 		}
 
-		result, interrupt := Evaluate(function.Declaration.Body, environment)
+		result, interrupt := Evaluate(callee.Literal.Body, environment)
 		if interrupt != nil {
 			if interrupt.Type() == object.RETURN_VALUE {
 				return interrupt.(*object.ReturnValue).Value, nil
@@ -281,7 +312,7 @@ func evaluateCallExpression(node *ast.CallExpression, env *object.Environment) (
 			return nil, interrupt
 		}
 		return result, nil
-	case *object.Builtin:
+	case *object.BuiltinFunction:
 		args := []object.Object{}
 		for _, arg := range node.Arguments {
 			value, interrupt := Evaluate(arg, env)
@@ -290,9 +321,9 @@ func evaluateCallExpression(node *ast.CallExpression, env *object.Environment) (
 			}
 			args = append(args, value)
 		}
-		return function.Fn(args...)
+		return callee.Fn(env, args...)
 	default:
-		return nil, toError("unknown operator: %s()", function.Type())
+		return nil, toError("unknown operator: %s()", callee.Type())
 	}
 }
 
@@ -336,7 +367,7 @@ func evaluateSubscriptExpression(node *ast.SubscriptExpression, env *object.Envi
 }
 
 func evaluateFunctionLiteral(node *ast.FunctionLiteral, env *object.Environment) (object.Object, object.Interruption) {
-	return &object.Function{Declaration: node, Closure: env}, nil
+	return &object.Function{Literal: node, Closure: env}, nil
 }
 
 func evaluateIdentifier(node *ast.Identifier, env *object.Environment) (object.Object, object.Interruption) {
@@ -349,18 +380,6 @@ func evaluateIdentifier(node *ast.Identifier, env *object.Environment) (object.O
 	}
 
 	return nil, toError("unknown identifier: %s", node.Value)
-}
-
-func evaluateNumberLiteral(node *ast.NumberLiteral) (object.Object, object.Interruption) {
-	return object.Number(node.Value), nil
-}
-
-func evaluateBooleanLiteral(node *ast.BooleanLiteral) (object.Object, object.Interruption) {
-	return toBoolean(node.Value), nil
-}
-
-func evaluateStringLiteral(node *ast.StringLiteral) (object.Object, object.Interruption) {
-	return object.String(node.Value), nil
 }
 
 func evaluateArrayLiteral(node *ast.ArrayLiteral, env *object.Environment) (object.Object, object.Interruption) {
@@ -398,10 +417,6 @@ func evaluateHashLiteral(node *ast.HashLiteral, env *object.Environment) (object
 	return hash, nil
 }
 
-func evaluateNullLiteral() (object.Object, object.Interruption) {
-	return NULL, nil
-}
-
 func toBoolean(value bool) object.Boolean {
 	if value {
 		return TRUE
@@ -424,13 +439,15 @@ func isTruthy(o object.Object) object.Boolean {
 	switch {
 	case o == FALSE:
 		return FALSE
-	case o == NULL:
-		return FALSE
 	case o.Type() == object.NUMBER && o.(object.Number) == 0.0:
 		return FALSE
 	case o.Type() == object.STRING && o.(object.String) == "":
 		return FALSE
 	case o.Type() == object.ARRAY && len(o.(*object.Array).Elements) == 0:
+		return FALSE
+	case o.Type() == object.HASH && len(o.(*object.Hash).Pairs) == 0:
+		return FALSE
+	case o == NULL:
 		return FALSE
 	default:
 		return TRUE

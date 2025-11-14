@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/evaluator"
-	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/object"
-	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/parser"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/evaluator"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/object"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/parser"
 )
 
 const MONKEY_FACE = `
@@ -41,6 +41,7 @@ func Start(in io.Reader, out io.Writer) {
 		p := parser.NewParser(line, false)
 
 		program := p.ParseProgram()
+
 		if len(p.Errors()) != 0 {
 			io.WriteString(out, MONKEY_FACE)
 			io.WriteString(out, "Woops! We ran into some monkey business here!\n")
@@ -53,7 +54,7 @@ func Start(in io.Reader, out io.Writer) {
 
 		value, error := evaluator.Evaluate(program, env)
 		if error != nil {
-			io.WriteString(out, "Error: "+error.(*object.Error).Message+"\n")
+			io.WriteString(out, error.Inspect()+"\n")
 			continue
 		}
 

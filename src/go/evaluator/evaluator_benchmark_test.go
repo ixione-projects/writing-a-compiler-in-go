@@ -3,8 +3,8 @@ package evaluator
 import (
 	"testing"
 
-	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/object"
-	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/parser"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/object"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/parser"
 )
 
 func BenchmarkEvaluate(b *testing.B) {

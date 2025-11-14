@@ -1,3 +1,3 @@
-module github.com/ixione-projects/writing-an-interpreter-in-go
+module github.com/ixione-projects/writing-a-compiler-in-go
 
 go 1.25.3

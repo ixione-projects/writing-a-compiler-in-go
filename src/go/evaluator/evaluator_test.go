@@ -3,8 +3,8 @@ package evaluator
 import (
 	"testing"
 
-	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/object"
-	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/parser"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/object"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/parser"
 )
 
 type EvaluatorTest struct {
@@ -672,7 +672,7 @@ var suites = []struct {
 	},
 }
 
-func TestEvaluateNumber(t *testing.T) {
+func TestEvaluate(t *testing.T) {
 	for _, suite := range suites {
 		t.Run(suite.name, func(t *testing.T) {
 			for i, test := range suite.tests {

@@ -3,7 +3,7 @@ package lexer
 import (
 	"slices"
 
-	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/token"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/token"
 )
 
 type Lexer struct {

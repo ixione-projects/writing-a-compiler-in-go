@@ -4,20 +4,22 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/ixione-projects/writing-an-interpreter-in-go/src/go/token"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/token"
 )
 
 type NodeType int
 
 const (
 	PROGRAM NodeType = iota
+	ERROR
 	LET_DECLARATION
 	RETURN_STATEMENT
 	EXPRESSION_STATEMENT
 	BLOCK_STATEMENT
-	PREFIX_EXPRESSION
-	INFIX_EXPRESSION
-	IF_EXPRESSION
+	UNARY_EXPRESSION
+	BINARY_EXPRESSION
+	LOGICAL_EXPRESSION
+	CONDITIONAL_EXPRESSION
 	FUNCTION_LITERAL
 	CALL_EXPRESSION
 	ASSIGNMENT_EXPRESSION
@@ -42,23 +44,40 @@ type Program struct {
 	Statements []Statement
 }
 
-func (p *Program) TokenLiteral() string {
-	if len(p.Statements) <= 0 {
+func (e *Program) TokenLiteral() string {
+	if len(e.Statements) <= 0 {
 		return ""
 	}
-	return p.Statements[0].TokenLiteral()
+	return e.Statements[0].TokenLiteral()
 }
 
-func (p *Program) Type() NodeType {
+func (e *Program) Type() NodeType {
 	return PROGRAM
 }
 
-func (p *Program) String() string {
+func (e *Program) String() string {
 	var out bytes.Buffer
-	for _, s := range p.Statements {
+	for _, s := range e.Statements {
 		out.WriteString(s.String())
 	}
 	return out.String()
+}
+
+type Error struct {
+	Token   token.Token
+	Message string
+}
+
+func (e *Error) TokenLiteral() string {
+	return e.Token.Literal
+}
+
+func (e *Error) Type() NodeType {
+	return ERROR
+}
+
+func (e *Error) String() string {
+	return e.Message
 }
 
 type Statement interface {
@@ -70,6 +89,8 @@ func (ls *LetDeclaration) statementNode()      {}
 func (rs *ReturnStatement) statementNode()     {}
 func (es *ExpressionStatement) statementNode() {}
 func (bs *BlockStatement) statementNode()      {}
+
+func (e *Error) statementNode() {}
 
 type LetDeclaration struct {
 	Token token.Token
@@ -178,99 +199,128 @@ type Expression interface {
 	expressionNode()
 }
 
-func (pe *PrefixExpression) expressionNode()     {}
-func (ie *InfixExpression) expressionNode()      {}
-func (ie *IfExpression) expressionNode()         {}
-func (fl *FunctionLiteral) expressionNode()      {}
-func (ce *CallExpression) expressionNode()       {}
-func (ae *AssignmentExpression) expressionNode() {}
-func (ie *SubscriptExpression) expressionNode()  {}
-func (i *Identifier) expressionNode()            {}
-func (nl *NumberLiteral) expressionNode()        {}
-func (bl *BooleanLiteral) expressionNode()       {}
-func (sl *StringLiteral) expressionNode()        {}
-func (al *ArrayLiteral) expressionNode()         {}
-func (hl *HashLiteral) expressionNode()          {}
-func (nl *NullLiteral) expressionNode()          {}
+func (ue *UnaryExpression) expressionNode()       {}
+func (be *BinaryExpression) expressionNode()      {}
+func (ce *ConditionalExpression) expressionNode() {}
+func (fl *FunctionLiteral) expressionNode()       {}
+func (ce *CallExpression) expressionNode()        {}
+func (ae *AssignmentExpression) expressionNode()  {}
+func (ie *SubscriptExpression) expressionNode()   {}
+func (i *Identifier) expressionNode()             {}
+func (nl *NumberLiteral) expressionNode()         {}
+func (bl *BooleanLiteral) expressionNode()        {}
+func (sl *StringLiteral) expressionNode()         {}
+func (al *ArrayLiteral) expressionNode()          {}
+func (hl *HashLiteral) expressionNode()           {}
+func (nl *NullLiteral) expressionNode()           {}
 
-type PrefixExpression struct {
+func (e *Error) expressionNode() {}
+
+type UnaryExpression struct {
 	Token    token.Token
 	Operator string
 	Right    Expression
 }
 
-func (pe *PrefixExpression) TokenLiteral() string {
-	return pe.Token.Literal
+func (ue *UnaryExpression) TokenLiteral() string {
+	return ue.Token.Literal
 }
 
-func (pe *PrefixExpression) Type() NodeType {
-	return PREFIX_EXPRESSION
+func (ue *UnaryExpression) Type() NodeType {
+	return UNARY_EXPRESSION
 }
 
-func (pe *PrefixExpression) String() string {
+func (ue *UnaryExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString("(")
-	out.WriteString(pe.Operator)
-	out.WriteString(pe.Right.String())
+	out.WriteString(ue.Operator)
+	out.WriteString(ue.Right.String())
 	out.WriteString(")")
 
 	return out.String()
 }
 
-type InfixExpression struct {
+type BinaryExpression struct {
 	Token    token.Token
 	Left     Expression
 	Operator string
 	Right    Expression
 }
 
-func (ie *InfixExpression) TokenLiteral() string {
-	return ie.Token.Literal
+func (be *BinaryExpression) TokenLiteral() string {
+	return be.Token.Literal
 }
 
-func (ie *InfixExpression) Type() NodeType {
-	return INFIX_EXPRESSION
+func (be *BinaryExpression) Type() NodeType {
+	return BINARY_EXPRESSION
 }
 
-func (ie *InfixExpression) String() string {
+func (be *BinaryExpression) String() string {
 	var out bytes.Buffer
 
 	out.WriteString("(")
-	out.WriteString(ie.Left.String())
-	out.WriteString(ie.Operator)
-	out.WriteString(ie.Right.String())
+	out.WriteString(be.Left.String())
+	out.WriteString(be.Operator)
+	out.WriteString(be.Right.String())
 	out.WriteString(")")
 
 	return out.String()
 }
 
-type IfExpression struct {
+type LogicalExpression struct {
+	Token    token.Token
+	Left     Expression
+	Operator string
+	Right    Expression
+}
+
+func (le *LogicalExpression) TokenLiteral() string {
+	return le.Token.Literal
+}
+
+func (le *LogicalExpression) Type() NodeType {
+	return LOGICAL_EXPRESSION
+}
+
+func (le *LogicalExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("(")
+	out.WriteString(le.Left.String())
+	out.WriteString(le.Operator)
+	out.WriteString(le.Right.String())
+	out.WriteString(")")
+
+	return out.String()
+}
+
+type ConditionalExpression struct {
 	Token       token.Token
 	Condition   Expression
 	Consequence *BlockStatement
 	Alternative *BlockStatement
 }
 
-func (ie *IfExpression) TokenLiteral() string {
-	return ie.Token.Literal
+func (ce *ConditionalExpression) TokenLiteral() string {
+	return ce.Token.Literal
 }
 
-func (ie *IfExpression) Type() NodeType {
-	return IF_EXPRESSION
+func (ce *ConditionalExpression) Type() NodeType {
+	return CONDITIONAL_EXPRESSION
 }
 
-func (ie *IfExpression) String() string {
+func (ce *ConditionalExpression) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(ie.TokenLiteral())
+	out.WriteString(ce.TokenLiteral())
 	out.WriteString(" ")
-	out.WriteString(ie.Condition.String())
+	out.WriteString(ce.Condition.String())
 	out.WriteString(" ")
-	out.WriteString(ie.Consequence.String())
-	if ie.Alternative != nil {
+	out.WriteString(ce.Consequence.String())
+	if ce.Alternative != nil {
 		out.WriteString(" else ")
-		out.WriteString(ie.Alternative.String())
+		out.WriteString(ce.Alternative.String())
 	}
 
 	return out.String()
@@ -531,25 +581,27 @@ func (nl *NullLiteral) String() string {
 }
 
 var nodes = map[NodeType]string{
-	PROGRAM:               "PROGRAM",
-	LET_DECLARATION:       "LET_DECLARATION",
-	RETURN_STATEMENT:      "RETURN_STATEMENT",
-	EXPRESSION_STATEMENT:  "EXPRESSION_STATEMENT",
-	BLOCK_STATEMENT:       "BLOCK_STATEMENT",
-	PREFIX_EXPRESSION:     "PREFIX_EXPRESSION",
-	INFIX_EXPRESSION:      "INFIX_EXPRESSION",
-	IF_EXPRESSION:         "IF_EXPRESSION",
-	FUNCTION_LITERAL:      "FUNCTION_LITERAL",
-	CALL_EXPRESSION:       "CALL_EXPRESSION",
-	ASSIGNMENT_EXPRESSION: "ASSIGNMENT_EXPRESSION",
-	SUBSCRIPT_EXPRESSION:  "SUBSCRIPT_EXPRESSION",
-	IDENTIFIER:            "IDENTIFIER",
-	NUMBER_LITERAL:        "NUMBER_LITERAL",
-	BOOLEAN_LITERAL:       "BOOLEAN_LITERAL",
-	STRING_LITERAL:        "STRING_LITERAL",
-	ARRAY_LITERAL:         "ARRAY_LITERAL",
-	HASH_LITERAL:          "HASH_LITERAL",
-	NULL_LITERAL:          "NULL_LITERAL",
+	PROGRAM:                "PROGRAM",
+	ERROR:                  "ERROR",
+	LET_DECLARATION:        "LET_DECLARATION",
+	RETURN_STATEMENT:       "RETURN_STATEMENT",
+	EXPRESSION_STATEMENT:   "EXPRESSION_STATEMENT",
+	BLOCK_STATEMENT:        "BLOCK_STATEMENT",
+	UNARY_EXPRESSION:       "UNARY_EXPRESSION",
+	BINARY_EXPRESSION:      "BINARY_EXPRESSION",
+	LOGICAL_EXPRESSION:     "LOGICAL_EXPRESSION",
+	CONDITIONAL_EXPRESSION: "CONDITIONAL_EXPRESSION",
+	FUNCTION_LITERAL:       "FUNCTION_LITERAL",
+	CALL_EXPRESSION:        "CALL_EXPRESSION",
+	ASSIGNMENT_EXPRESSION:  "ASSIGNMENT_EXPRESSION",
+	SUBSCRIPT_EXPRESSION:   "SUBSCRIPT_EXPRESSION",
+	IDENTIFIER:             "IDENTIFIER",
+	NUMBER_LITERAL:         "NUMBER_LITERAL",
+	BOOLEAN_LITERAL:        "BOOLEAN_LITERAL",
+	STRING_LITERAL:         "STRING_LITERAL",
+	ARRAY_LITERAL:          "ARRAY_LITERAL",
+	HASH_LITERAL:           "HASH_LITERAL",
+	NULL_LITERAL:           "NULL_LITERAL",
 }
 
 func (nt NodeType) String() string {
