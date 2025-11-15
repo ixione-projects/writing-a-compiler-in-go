@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/evaluator"
-	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/object"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/compiler"
 	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/parser"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/vm"
 )
 
 const MONKEY_FACE = `
@@ -28,7 +28,6 @@ const PROMPT = "> "
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
-	env := object.NewEnvironment(nil)
 
 	for {
 		fmt.Fprintf(out, PROMPT)
@@ -52,14 +51,20 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		value, error := evaluator.Evaluate(program, env)
-		if error != nil {
-			io.WriteString(out, error.Inspect()+"\n")
-			continue
+		c := compiler.New()
+		chunk, err := c.Compile(program)
+		if err != nil {
+			fmt.Fprintf(out, "Woops! Compilation failed!\n")
+			fmt.Fprintf(out, "compilation error: %s\n", err)
 		}
 
-		if value != nil && value.Type() != object.NULL {
-			io.WriteString(out, value.Inspect()+"\n")
+		vm := vm.New(chunk, false)
+		err = vm.Run()
+		if err != nil {
+			fmt.Fprintf(out, "Woops! Executing bytecode failed!\n")
+			fmt.Fprintf(out, "execution error: %s\n", err)
 		}
+
+		io.WriteString(out, vm.StackTop().Inspect()+"\n")
 	}
 }

@@ -10,7 +10,7 @@ import (
 type ParserTest struct {
 	input   string
 	errors  []string
-	debug   bool
+	trace   bool
 	program ProgramTest
 }
 
@@ -1438,7 +1438,7 @@ func TestExpressionStatement(t *testing.T) {
 }
 
 func testParser(t *testing.T, i int, test ParserTest) {
-	p := NewParser(test.input, test.debug)
+	p := NewParser(test.input, test.trace)
 	program := p.ParseProgram()
 
 	if len(test.errors) != len(p.Errors()) {
