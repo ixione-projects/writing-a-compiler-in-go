@@ -6,19 +6,50 @@ import (
 	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/ast"
 	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/code"
 	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/object"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/util"
 )
+
+type Compiler struct {
+	nodes *util.Stack[CompilerStackItem]
+
+	chunk *Chunk
+}
+
+type StackItemType int
+
+const (
+	NODE_ITEM StackItemType = iota
+	OPERATOR_ITEM
+)
+
+type CompilerStackItem interface {
+	Type() StackItemType
+}
+
+func (n *NodeItem) Type() StackItemType {
+	return NODE_ITEM
+}
+func (o OperatorItem) Type() StackItemType {
+	return OPERATOR_ITEM
+}
+
+type NodeItem struct {
+	node ast.Node
+}
+
+type OperatorItem string
 
 type Chunk struct {
 	Bytecode  code.Bytecode
 	Constants []object.Object
 }
 
-type Compiler struct {
-	chunk *Chunk
-}
+func NewCompiler(node ast.Node) *Compiler {
+	nodes := util.NewStack[CompilerStackItem](util.INITIAL_STACK_CAPACITY)
+	nodes.Push(&NodeItem{node})
 
-func New() *Compiler {
 	return &Compiler{
+		nodes: nodes,
 		chunk: &Chunk{
 			Bytecode:  code.Bytecode{},
 			Constants: []object.Object{},
@@ -26,57 +57,61 @@ func New() *Compiler {
 	}
 }
 
-func (c *Compiler) Compile(node ast.Node) (*Chunk, error) {
-	switch node.Type() {
-	case ast.PROGRAM:
-		for _, stmt := range node.(*ast.Program).Statements {
-			_, err := c.Compile(stmt)
-			if err != nil {
-				return nil, err
-			}
-		}
-	case ast.ERROR:
-		return nil, fmt.Errorf("ERROR: %s\n", node.(*ast.Error).Message)
-	case ast.LET_DECLARATION:
-	case ast.RETURN_STATEMENT:
-	case ast.EXPRESSION_STATEMENT:
-		return c.Compile(node.(*ast.ExpressionStatement).Expression)
-	case ast.BLOCK_STATEMENT:
-	case ast.UNARY_EXPRESSION:
-	case ast.BINARY_EXPRESSION:
-		node := node.(*ast.BinaryExpression)
-		_, err := c.Compile(node.Left)
-		if err != nil {
-			return nil, err
-		}
-		_, err = c.Compile(node.Right)
-		if err != nil {
-			return nil, err
-		}
+func (c *Compiler) Compile() (*Chunk, error) {
+	for c.nodes.Size() != 0 {
+		item := c.nodes.Pop()
 
-		switch node.Operator {
-		case "+":
-			c.emit(code.OP_ADD)
+		switch item.Type() {
+		case NODE_ITEM:
+			node := item.(*NodeItem).node
+
+			switch node.Type() {
+			case ast.PROGRAM:
+				node := node.(*ast.Program)
+				for i := len(node.Statements) - 1; i >= 0; i-- {
+					c.nodes.Push(&NodeItem{node.Statements[i]})
+				}
+			case ast.ERROR:
+				return nil, fmt.Errorf("ERROR: %s\n", node.(*ast.Error).Message)
+			case ast.LET_DECLARATION:
+			case ast.RETURN_STATEMENT:
+			case ast.EXPRESSION_STATEMENT:
+				c.nodes.Push(&NodeItem{node.(*ast.ExpressionStatement).Expression})
+			case ast.BLOCK_STATEMENT:
+			case ast.UNARY_EXPRESSION:
+			case ast.BINARY_EXPRESSION:
+				node := node.(*ast.BinaryExpression)
+				c.nodes.Push(OperatorItem(node.Operator))
+				c.nodes.Push(&NodeItem{node.Right})
+				c.nodes.Push(&NodeItem{node.Left})
+			case ast.LOGICAL_EXPRESSION:
+			case ast.CONDITIONAL_EXPRESSION:
+			case ast.FUNCTION_LITERAL:
+			case ast.ASSIGNMENT_EXPRESSION:
+			case ast.CALL_EXPRESSION:
+			case ast.SUBSCRIPT_EXPRESSION:
+			case ast.IDENTIFIER:
+			case ast.NUMBER_LITERAL:
+				constant := object.Number(node.(*ast.NumberLiteral).Value)
+				c.emit(code.OP_CONSTANT, c.makeConstant(constant))
+			case ast.BOOLEAN_LITERAL:
+			case ast.STRING_LITERAL:
+			case ast.ARRAY_LITERAL:
+			case ast.HASH_LITERAL:
+			case ast.NULL_LITERAL:
+			default:
+				return nil, fmt.Errorf("unexpected node type: %T", node.Type())
+			}
+		case OPERATOR_ITEM:
+			switch item.(OperatorItem) {
+			case "+":
+				c.emit(code.OP_ADD)
+			default:
+				return nil, fmt.Errorf("unexpected operator: %s\n", item)
+			}
 		default:
-			return nil, fmt.Errorf("unexpected binary operator: %s\n", node.Operator)
+			return nil, fmt.Errorf("unexpected item type: %T", item.Type())
 		}
-	case ast.LOGICAL_EXPRESSION:
-	case ast.CONDITIONAL_EXPRESSION:
-	case ast.FUNCTION_LITERAL:
-	case ast.ASSIGNMENT_EXPRESSION:
-	case ast.CALL_EXPRESSION:
-	case ast.SUBSCRIPT_EXPRESSION:
-	case ast.IDENTIFIER:
-	case ast.NUMBER_LITERAL:
-		constant := object.Number(node.(*ast.NumberLiteral).Value)
-		c.emit(code.OP_CONSTANT, c.makeConstant(constant))
-	case ast.BOOLEAN_LITERAL:
-	case ast.STRING_LITERAL:
-	case ast.ARRAY_LITERAL:
-	case ast.HASH_LITERAL:
-	case ast.NULL_LITERAL:
-	default:
-		return nil, fmt.Errorf("unexpected node type: %T", node)
 	}
 
 	return c.chunk, nil

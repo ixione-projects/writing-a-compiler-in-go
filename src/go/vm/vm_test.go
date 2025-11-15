@@ -51,8 +51,8 @@ func TestStackTop(t *testing.T) {
 					t.Fatalf("test[%d] - %s", i, test.input)
 				}
 
-				c := compiler.New()
-				chunk, err := c.Compile(program)
+				c := compiler.NewCompiler(program)
+				chunk, err := c.Compile()
 				if err != nil {
 					t.Fatalf("test[%d] - Compile(program) ==> expected: not <%#v>", i, err)
 				}

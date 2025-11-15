@@ -6,6 +6,7 @@ import (
 	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/code"
 	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/compiler"
 	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/object"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/util"
 )
 
 const STACK_SIZE = 2045
@@ -14,8 +15,7 @@ type VM struct {
 	chunk *compiler.Chunk
 	trace bool
 
-	sp    int
-	stack []object.Object
+	stack *util.Stack[object.Object]
 	ip    int
 }
 
@@ -24,12 +24,13 @@ func New(chunk *compiler.Chunk, trace bool) *VM {
 		chunk: chunk,
 		trace: trace,
 
-		stack: make([]object.Object, STACK_SIZE),
+		stack: util.NewStack[object.Object](STACK_SIZE),
 	}
 }
 
 func (vm *VM) Run() error {
-	for vm.ip = 0; vm.ip < len(vm.chunk.Bytecode); vm.ip++ {
+	vm.ip = 0
+	for vm.ip < len(vm.chunk.Bytecode) {
 		op := code.OpCode(vm.chunk.Bytecode[vm.ip])
 		switch op {
 		case code.OP_CONSTANT:
@@ -49,30 +50,26 @@ func (vm *VM) Run() error {
 		default:
 			return fmt.Errorf("unexpected instruction: %d\n", op)
 		}
+
+		vm.ip += 1
 	}
 
 	return nil
 }
 
 func (vm *VM) StackTop() object.Object {
-	if vm.sp == 0 {
-		return nil
-	}
-	return vm.stack[vm.sp-1]
+	return vm.stack.Peek()
 }
 
 func (vm *VM) push(o object.Object) error {
-	if vm.sp >= STACK_SIZE {
+	if vm.stack.Size() >= STACK_SIZE {
 		return fmt.Errorf("stack overflow")
 	}
 
-	vm.stack[vm.sp] = o
-	vm.sp += 1
-
+	vm.stack.Push(o)
 	return nil
 }
 
 func (vm *VM) pop() object.Object {
-	vm.sp -= 1
-	return vm.stack[vm.sp]
+	return vm.stack.Pop()
 }

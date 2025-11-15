@@ -18,7 +18,7 @@ type Parser struct {
 	tok    token.Token
 	errors []string
 
-	rules map[token.TokenType]parseRule
+	rules map[token.TokenType]parserRule
 }
 
 type precedence int
@@ -43,7 +43,7 @@ type (
 	infixParseFn  func(ast.Expression) ast.Expression
 )
 
-type parseRule struct {
+type parserRule struct {
 	PrefixParseFn prefixParseFn
 	InfixParseFn  infixParseFn
 	Precedence    precedence
@@ -58,7 +58,7 @@ func NewParser(input string, trace bool) *Parser {
 	}
 	p.tok = p.peek0()
 
-	p.rules = map[token.TokenType]parseRule{
+	p.rules = map[token.TokenType]parserRule{
 		token.ILLEGAL: {p.reportIllegalToken, nil, NONE},
 		token.EOF:     {nil, nil, NONE},
 		token.IDENT:   {p.parseIdentifier, nil, NONE},
@@ -658,7 +658,7 @@ func (p *Parser) next() {
 	p.tok = p.l.Token(p.current)
 }
 
-func (p *Parser) getRule(ttype token.TokenType) parseRule {
+func (p *Parser) getRule(ttype token.TokenType) parserRule {
 	return p.rules[ttype]
 }
 

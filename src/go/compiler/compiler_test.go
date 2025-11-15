@@ -39,8 +39,8 @@ func TestCompile(t *testing.T) {
 			t.Fatalf("test[%d] - %s", i, test.input)
 		}
 
-		c := New()
-		chunk, err := c.Compile(program)
+		c := NewCompiler(program)
+		chunk, err := c.Compile()
 		if err != nil {
 			t.Fatalf("test[%d] - Compile(program) ==> expected: not <%#v>", i, err)
 		}

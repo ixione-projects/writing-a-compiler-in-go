@@ -51,8 +51,8 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		c := compiler.New()
-		chunk, err := c.Compile(program)
+		c := compiler.NewCompiler(program)
+		chunk, err := c.Compile()
 		if err != nil {
 			fmt.Fprintf(out, "Woops! Compilation failed!\n")
 			fmt.Fprintf(out, "compilation error: %s\n", err)
