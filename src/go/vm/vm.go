@@ -9,24 +9,35 @@ import (
 	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/util"
 )
 
-const STACK_SIZE = 2045
+const STACK_SIZE = 2048
+const GLOBALS_SIZE = 65536
 
 type VM struct {
 	chunk *compiler.Chunk
 	trace bool
 
-	stack *util.Stack[object.Object]
-	ip    int
+	stack   *util.Stack[object.Object]
+	globals []object.Object
+	ip      int
 
 	popped object.Object
 }
 
-func New(chunk *compiler.Chunk, trace bool) *VM {
+func NewVM(chunk *compiler.Chunk, trace bool) *VM {
 	return &VM{
-		chunk: chunk,
-		trace: trace,
+		chunk:   chunk,
+		trace:   trace,
+		stack:   util.NewStack[object.Object](STACK_SIZE),
+		globals: make([]object.Object, GLOBALS_SIZE),
+	}
+}
 
-		stack: util.NewStack[object.Object](STACK_SIZE),
+func NewVMWithState(chunk *compiler.Chunk, trace bool, globals []object.Object) *VM {
+	return &VM{
+		chunk:   chunk,
+		trace:   trace,
+		stack:   util.NewStack[object.Object](STACK_SIZE),
+		globals: globals,
 	}
 }
 
@@ -83,6 +94,17 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case code.OP_GET_GLOBAL:
+			index := code.ReadUint16(vm.chunk.Bytecode[vm.ip+1:])
+			vm.ip += 2
+			err := vm.push(vm.globals[index])
+			if err != nil {
+				return err
+			}
+		case code.OP_SET_GLOBAL:
+			index := code.ReadUint16(vm.chunk.Bytecode[vm.ip+1:])
+			vm.ip += 2
+			vm.globals[index] = vm.pop()
 		case code.OP_POP:
 			vm.pop()
 		default:

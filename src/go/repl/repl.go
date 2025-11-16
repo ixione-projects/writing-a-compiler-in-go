@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/compiler"
+	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/object"
 	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/parser"
 	"github.com/ixione-projects/writing-a-compiler-in-go/src/go/vm"
 )
@@ -29,6 +30,9 @@ const PROMPT = "> "
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 
+	symbols := compiler.NewSymbolTable()
+	constants := []object.Object{}
+	globals := make([]object.Object, vm.GLOBALS_SIZE)
 	for {
 		fmt.Fprintf(out, PROMPT)
 		scanned := scanner.Scan()
@@ -51,14 +55,14 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		c := compiler.NewCompiler(program)
+		c := compiler.NewCompilerWithState(program, symbols, constants)
 		chunk, err := c.Compile()
 		if err != nil {
 			fmt.Fprintf(out, "Woops! Compilation failed!\n")
 			fmt.Fprintf(out, "compilation error: %s\n", err)
 		}
 
-		vm := vm.New(chunk, false)
+		vm := vm.NewVMWithState(chunk, false, globals)
 		err = vm.Run()
 		if err != nil {
 			fmt.Fprintf(out, "Woops! Executing bytecode failed!\n")

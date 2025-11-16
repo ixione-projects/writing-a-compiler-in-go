@@ -241,6 +241,23 @@ func TestStackTop(t *testing.T) {
 				},
 			},
 		},
+		{
+			"TestLetStatement",
+			[]VMTest{
+				{
+					input: "let one = 1; one",
+					top:   object.Number(1),
+				},
+				{
+					input: "let one = 1; let two = 2; one + two",
+					top:   object.Number(3),
+				},
+				{
+					input: "let one = 1; let two = one + one; one + two",
+					top:   object.Number(3),
+				},
+			},
+		},
 	}
 
 	for _, suite := range suites {
@@ -263,7 +280,7 @@ func TestStackTop(t *testing.T) {
 					t.Fatalf("test[%d] - Compile(program) ==> expected: not <%#v>", i, err)
 				}
 
-				vm := New(chunk, true)
+				vm := NewVM(chunk, true)
 				err = vm.Run()
 				if err != nil {
 					t.Fatalf("test[%d] - vm.Run() ==> expected: not <%#v>", i, err)

@@ -210,6 +210,52 @@ func TestCompile(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "TestLetStatement",
+			tests: []CompilerTest{
+				{
+					input: `
+					let one = 1;
+					let two = 2;
+					`,
+					constants: []object.Object{object.Number(1), object.Number(2)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_SET_GLOBAL, 0),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_SET_GLOBAL, 1),
+					},
+				},
+				{
+					input: `
+					let one = 1;
+					one;
+					`,
+					constants: []object.Object{object.Number(1)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_SET_GLOBAL, 0),
+						code.Make(code.OP_GET_GLOBAL, 0),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input: `
+					let one = 1;
+					let two = one;
+					two;`,
+					constants: []object.Object{object.Number(1)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_SET_GLOBAL, 0),
+						code.Make(code.OP_GET_GLOBAL, 0),
+						code.Make(code.OP_SET_GLOBAL, 1),
+						code.Make(code.OP_GET_GLOBAL, 1),
+						code.Make(code.OP_POP),
+					},
+				},
+			},
+		},
 	}
 
 	for _, suite := range suites {
@@ -261,7 +307,7 @@ func TestCompile(t *testing.T) {
 				}
 
 				if fail {
-					t.Fatalf("test[%d] - %s", i, chunk.Bytecode.Disassemble())
+					t.Fatalf("test[%d] - \n%s", i, chunk.Bytecode.Disassemble())
 				}
 			}
 		})

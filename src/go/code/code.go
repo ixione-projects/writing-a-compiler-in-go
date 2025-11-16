@@ -25,6 +25,8 @@ const (
 	OP_TRUE
 	OP_FALSE
 	OP_NULL
+	OP_GET_GLOBAL
+	OP_SET_GLOBAL
 )
 
 type Definition struct {
@@ -49,6 +51,8 @@ var definitions = map[OpCode]*Definition{
 	OP_TRUE:            {"OP_TRUE", []int{}},
 	OP_FALSE:           {"OP_FALSE", []int{}},
 	OP_NULL:            {"OP_NULL", []int{}},
+	OP_GET_GLOBAL:      {"OP_GET_GLOBAL", []int{2}},
+	OP_SET_GLOBAL:      {"OP_SET_GLOBAL", []int{2}},
 }
 
 func Lookup(op byte) (*Definition, error) {
@@ -181,6 +185,8 @@ var codes = [...]string{
 	OP_TRUE:            "OP_TRUE",
 	OP_FALSE:           "OP_FALSE",
 	OP_NULL:            "OP_NULL",
+	OP_GET_GLOBAL:      "OP_GET_GLOBAL",
+	OP_SET_GLOBAL:      "OP_SET_GLOBAL",
 }
 
 func (oc OpCode) String() string {

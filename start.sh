@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-go run ./src/go
+go run ./src/go/

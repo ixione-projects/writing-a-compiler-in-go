@@ -11,6 +11,8 @@ import (
 type Compiler struct {
 	node ast.Node
 
+	symbols *SymbolTable
+
 	chunk *Chunk
 }
 
@@ -21,10 +23,22 @@ type Chunk struct {
 
 func NewCompiler(node ast.Node) *Compiler {
 	return &Compiler{
-		node: node,
+		node:    node,
+		symbols: NewSymbolTable(),
 		chunk: &Chunk{
 			Bytecode:  code.Bytecode{},
 			Constants: []object.Object{},
+		},
+	}
+}
+
+func NewCompilerWithState(node ast.Node, symbols *SymbolTable, constants []object.Object) *Compiler {
+	return &Compiler{
+		node:    node,
+		symbols: symbols,
+		chunk: &Chunk{
+			Bytecode:  code.Bytecode{},
+			Constants: constants,
 		},
 	}
 }
@@ -43,6 +57,10 @@ func (c *Compiler) Compile() (*Chunk, error) {
 	case ast.ERROR:
 		return nil, fmt.Errorf("ERROR: %s\n", c.node.(*ast.Error).Message)
 	case ast.LET_DECLARATION:
+		err := c.compileLetStatement()
+		if err != nil {
+			return nil, err
+		}
 	case ast.RETURN_STATEMENT:
 	case ast.EXPRESSION_STATEMENT:
 		err := c.compileExpressionStatement()
@@ -75,6 +93,10 @@ func (c *Compiler) Compile() (*Chunk, error) {
 	case ast.CALL_EXPRESSION:
 	case ast.SUBSCRIPT_EXPRESSION:
 	case ast.IDENTIFIER:
+		err := c.compileIdentifier()
+		if err != nil {
+			return nil, err
+		}
 	case ast.NUMBER_LITERAL:
 		constant := object.Number(c.node.(*ast.NumberLiteral).Value)
 		c.emit(code.OP_CONSTANT, c.makeConstant(constant))
@@ -112,6 +134,10 @@ func (c *Compiler) compileProgram() error {
 func (c *Compiler) compileStatement() error {
 	switch c.node.Type() {
 	case ast.LET_DECLARATION:
+		err := c.compileLetStatement()
+		if err != nil {
+			return err
+		}
 	case ast.RETURN_STATEMENT:
 	case ast.EXPRESSION_STATEMENT:
 		err := c.compileExpressionStatement()
@@ -121,6 +147,18 @@ func (c *Compiler) compileStatement() error {
 	default:
 		return fmt.Errorf("unexpected node type: %T", c.node.Type())
 	}
+	return nil
+}
+
+func (c *Compiler) compileLetStatement() error {
+	node := c.node.(*ast.LetDeclaration)
+	c.node = node.Value
+	err := c.compileExpression()
+	if err != nil {
+		return err
+	}
+	symbol := c.symbols.Define(node.Name.Value)
+	c.emit(code.OP_SET_GLOBAL, symbol.Index)
 	return nil
 }
 
@@ -169,6 +207,10 @@ func (c *Compiler) compileExpression() error {
 	case ast.CALL_EXPRESSION:
 	case ast.SUBSCRIPT_EXPRESSION:
 	case ast.IDENTIFIER:
+		err := c.compileIdentifier()
+		if err != nil {
+			return err
+		}
 	case ast.NUMBER_LITERAL:
 		constant := object.Number(c.node.(*ast.NumberLiteral).Value)
 		c.emit(code.OP_CONSTANT, c.makeConstant(constant))
@@ -294,6 +336,16 @@ func (c *Compiler) compileConditionalExpression() error {
 
 	jump = len(c.chunk.Bytecode) - jumpOffset - 2
 	c.patchJumpInstruction(jumpOffset, code.Make(code.OP_JUMP, jump-1))
+	return nil
+}
+
+func (c *Compiler) compileIdentifier() error {
+	ident := c.node.(*ast.Identifier)
+	symbol, ok := c.symbols.Lookup(ident.Value)
+	if !ok {
+		return fmt.Errorf("unknown identifier: %s", ident.Value)
+	}
+	c.emit(code.OP_GET_GLOBAL, symbol.Index)
 	return nil
 }
 
