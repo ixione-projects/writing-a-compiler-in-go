@@ -190,6 +190,55 @@ func TestStackTop(t *testing.T) {
 					input: "!!5",
 					top:   object.Boolean(true),
 				},
+				{
+					input: "!(if (false) { 5; })",
+					top:   object.Boolean(true),
+				},
+			},
+		},
+		{
+			"TestConditionalExpression",
+			[]VMTest{
+				{
+					input: "if (true) { 10 }",
+					top:   object.Number(10),
+				},
+				{
+					input: "if (true) { 10 } else { 20 }",
+					top:   object.Number(10),
+				},
+				{
+					input: "if (false) { 10 } else { 20 }",
+					top:   object.Number(20),
+				},
+				{
+					input: "if (1) { 10 }",
+					top:   object.Number(10),
+				},
+				{
+					input: "if (1 < 2) { 10 }",
+					top:   object.Number(10),
+				},
+				{
+					input: "if (1 < 2) { 10 } else { 20 }",
+					top:   object.Number(10),
+				},
+				{
+					input: "if (1 > 2) { 10 } else { 20 }",
+					top:   object.Number(20),
+				},
+				{
+					input: "if (1 > 2) { 10 }",
+					top:   &object.Null{},
+				},
+				{
+					input: "if (false) { 10 }",
+					top:   &object.Null{},
+				},
+				{
+					input: "if ((if (false) { 10 })) { 10 } else { 20 }",
+					top:   object.Number(20),
+				},
 			},
 		},
 	}
@@ -228,6 +277,10 @@ func TestStackTop(t *testing.T) {
 				case object.Boolean:
 					if expected != vm.LastPopInstruction() {
 						t.Fatalf("test[%d] - vm.StackTop() ==> expected: <%t> but was: <%t>", i, expected, vm.LastPopInstruction())
+					}
+				case *object.Null:
+					if _, ok := vm.LastPopInstruction().(*object.Null); !ok {
+						t.Fatalf("test[%d] - vm.StackTop() ==> unexpected type, expected: <%T> but was: <%T>", i, &object.Null{}, vm.LastPopInstruction())
 					}
 				default:
 					t.Fatalf("test[%d] ==> unexpected constant type: %T", i, test.top)

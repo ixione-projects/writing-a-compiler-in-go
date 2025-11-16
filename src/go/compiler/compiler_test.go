@@ -173,6 +173,43 @@ func TestCompile(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "TestConditionalExpression",
+			tests: []CompilerTest{
+				{
+					input: `
+					if (true) { 10 }; 3333;
+					`,
+					constants: []object.Object{object.Number(10), object.Number(3333)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_TRUE),
+						code.Make(code.OP_JUMP_NOT_TRUTHY, 6),
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_JUMP, 1),
+						code.Make(code.OP_NULL),
+						code.Make(code.OP_POP),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input: `
+					if (true) { 10 } else { 20 }; 3333;
+					`,
+					constants: []object.Object{object.Number(10), object.Number(20), object.Number(3333)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_TRUE),
+						code.Make(code.OP_JUMP_NOT_TRUTHY, 6),
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_JUMP, 3),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_POP),
+						code.Make(code.OP_CONSTANT, 2),
+						code.Make(code.OP_POP),
+					},
+				},
+			},
+		},
 	}
 
 	for _, suite := range suites {
@@ -224,7 +261,7 @@ func TestCompile(t *testing.T) {
 				}
 
 				if fail {
-					t.FailNow()
+					t.Fatalf("test[%d] - %s", i, chunk.Bytecode.Disassemble())
 				}
 			}
 		})

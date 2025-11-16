@@ -10,18 +10,21 @@ type OpCode byte
 
 const (
 	OP_CONSTANT OpCode = iota
-	OP_ADD
 	OP_POP
+	OP_ADD
 	OP_SUB
 	OP_MUL
 	OP_DIV
-	OP_TRUE
-	OP_FALSE
 	OP_EQUAL
 	OP_NOT_EQUAL
 	OP_GREATER
 	OP_MINUS
 	OP_BANG
+	OP_JUMP_NOT_TRUTHY
+	OP_JUMP
+	OP_TRUE
+	OP_FALSE
+	OP_NULL
 )
 
 type Definition struct {
@@ -30,19 +33,22 @@ type Definition struct {
 }
 
 var definitions = map[OpCode]*Definition{
-	OP_CONSTANT:  {"OP_CONSTANT", []int{2}},
-	OP_ADD:       {"OP_ADD", []int{}},
-	OP_POP:       {"OP_POP", []int{}},
-	OP_SUB:       {"OP_SUB", []int{}},
-	OP_MUL:       {"OP_MUL", []int{}},
-	OP_DIV:       {"OP_DIV", []int{}},
-	OP_TRUE:      {"OP_TRUE", []int{}},
-	OP_FALSE:     {"OP_FALSE", []int{}},
-	OP_EQUAL:     {"OP_EQUAL", []int{}},
-	OP_NOT_EQUAL: {"OP_NOT_EQUAL", []int{}},
-	OP_GREATER:   {"OP_GREATER", []int{}},
-	OP_MINUS:     {"OP_MINUS", []int{}},
-	OP_BANG:      {"OP_BANG", []int{}},
+	OP_CONSTANT:        {"OP_CONSTANT", []int{2}},
+	OP_POP:             {"OP_POP", []int{}},
+	OP_ADD:             {"OP_ADD", []int{}},
+	OP_SUB:             {"OP_SUB", []int{}},
+	OP_MUL:             {"OP_MUL", []int{}},
+	OP_DIV:             {"OP_DIV", []int{}},
+	OP_EQUAL:           {"OP_EQUAL", []int{}},
+	OP_NOT_EQUAL:       {"OP_NOT_EQUAL", []int{}},
+	OP_GREATER:         {"OP_GREATER", []int{}},
+	OP_MINUS:           {"OP_MINUS", []int{}},
+	OP_BANG:            {"OP_BANG", []int{}},
+	OP_JUMP_NOT_TRUTHY: {"OP_JUMP_NOT_TRUTHY", []int{2}},
+	OP_JUMP:            {"OP_JUMP", []int{2}},
+	OP_TRUE:            {"OP_TRUE", []int{}},
+	OP_FALSE:           {"OP_FALSE", []int{}},
+	OP_NULL:            {"OP_NULL", []int{}},
 }
 
 func Lookup(op byte) (*Definition, error) {
@@ -159,19 +165,22 @@ func Concat(ins []Instruction) Bytecode {
 }
 
 var codes = [...]string{
-	OP_CONSTANT:  "OP_CONSTANT",
-	OP_ADD:       "OP_ADD",
-	OP_POP:       "OP_POP",
-	OP_SUB:       "OP_SUB",
-	OP_MUL:       "OP_MUL",
-	OP_DIV:       "OP_DIV",
-	OP_TRUE:      "OP_TRUE",
-	OP_FALSE:     "OP_FALSE",
-	OP_EQUAL:     "OP_EQUAL",
-	OP_NOT_EQUAL: "OP_NOT_EQUAL",
-	OP_GREATER:   "OP_GREATER",
-	OP_MINUS:     "OP_MINUS",
-	OP_BANG:      "OP_BANG",
+	OP_CONSTANT:        "OP_CONSTANT",
+	OP_POP:             "OP_POP",
+	OP_ADD:             "OP_ADD",
+	OP_SUB:             "OP_SUB",
+	OP_MUL:             "OP_MUL",
+	OP_DIV:             "OP_DIV",
+	OP_EQUAL:           "OP_EQUAL",
+	OP_NOT_EQUAL:       "OP_NOT_EQUAL",
+	OP_GREATER:         "OP_GREATER",
+	OP_MINUS:           "OP_MINUS",
+	OP_BANG:            "OP_BANG",
+	OP_JUMP_NOT_TRUTHY: "OP_JUMP_NOT_TRUTHY",
+	OP_JUMP:            "OP_JUMP",
+	OP_TRUE:            "OP_TRUE",
+	OP_FALSE:           "OP_FALSE",
+	OP_NULL:            "OP_NULL",
 }
 
 func (oc OpCode) String() string {

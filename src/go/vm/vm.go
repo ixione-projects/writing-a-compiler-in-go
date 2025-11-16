@@ -59,6 +59,15 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case code.OP_JUMP_NOT_TRUTHY:
+			condition := vm.pop()
+			if !isTruthy(condition) {
+				vm.ip += int(code.ReadUint16(vm.chunk.Bytecode[vm.ip+1:])) + 2
+			} else {
+				vm.ip += 2
+			}
+		case code.OP_JUMP:
+			vm.ip += int(code.ReadUint16(vm.chunk.Bytecode[vm.ip+1:])) + 2
 		case code.OP_TRUE:
 			err := vm.push(TRUE)
 			if err != nil {
@@ -69,8 +78,13 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case code.OP_NULL:
+			err := vm.push(NULL)
+			if err != nil {
+				return err
+			}
 		case code.OP_POP:
-			vm.popped = vm.pop()
+			vm.pop()
 		default:
 			return fmt.Errorf("unexpected instruction: %s\n", op)
 		}
@@ -173,5 +187,6 @@ func (vm *VM) push(o object.Object) error {
 }
 
 func (vm *VM) pop() object.Object {
-	return vm.stack.Pop()
+	vm.popped = vm.stack.Pop()
+	return vm.popped
 }
