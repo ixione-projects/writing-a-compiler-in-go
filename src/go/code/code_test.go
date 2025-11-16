@@ -89,8 +89,8 @@ func TestDisassemble(t *testing.T) {
 
 	for i, test := range tests {
 		actual := Concat(test.instructions)
-		if test.disassembled != Disassemble(actual) {
-			t.Errorf("test[%d] - Disassemble() ==> expected: <%s> but was: <%s>", i, test.disassembled, Disassemble(actual))
+		if test.disassembled != actual.Disassemble() {
+			t.Errorf("test[%d] - Disassemble() ==> expected: <%s> but was: <%s>", i, test.disassembled, actual.Disassemble())
 		}
 	}
 }

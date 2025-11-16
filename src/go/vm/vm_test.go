@@ -33,6 +33,163 @@ func TestStackTop(t *testing.T) {
 					input: "1 + 2",
 					top:   object.Number(3),
 				},
+				{
+					input: "1 - 2",
+					top:   object.Number(-1),
+				},
+				{
+					input: "1 * 2",
+					top:   object.Number(2),
+				},
+				{
+					input: "4 / 2",
+					top:   object.Number(2),
+				},
+				{
+					input: "50 / 2 * 2 + 10 - 5",
+					top:   object.Number(55),
+				},
+				{
+					input: "5 + 5 + 5 + 5 - 10",
+					top:   object.Number(10),
+				},
+				{
+					input: "2 * 2 * 2 * 2 * 2",
+					top:   object.Number(32),
+				},
+				{
+					input: "5 * 2 + 10",
+					top:   object.Number(20),
+				},
+				{
+					input: "5 + 2 * 10",
+					top:   object.Number(25),
+				},
+				{
+					input: "5 * (2 + 10)",
+					top:   object.Number(60),
+				},
+				{
+					input: "-5",
+					top:   object.Number(-5),
+				},
+				{
+					input: "-10",
+					top:   object.Number(-10),
+				},
+				{
+					input: "-50 + 100 + -50",
+					top:   object.Number(0),
+				},
+				{
+					input: "(5 + 10 * 2 + 15 / 3) * 2 + -10",
+					top:   object.Number(50),
+				},
+			},
+		},
+		{
+			"TestBooleanExpression",
+			[]VMTest{
+				{
+					input: "true",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "false",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "1 < 2",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "1 > 2",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "1 < 1",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "1 > 1",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "1 == 1",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "1 != 1",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "1 == 2",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "1 != 2",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "true == true",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "false == false",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "true == false",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "true != false",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "false != true",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "(1 < 2) == true",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "(1 < 2) == false",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "(1 > 2) == true",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "(1 > 2) == false",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "!true",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "!false",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "!5",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "!!true",
+					top:   object.Boolean(true),
+				},
+				{
+					input: "!!false",
+					top:   object.Boolean(false),
+				},
+				{
+					input: "!!5",
+					top:   object.Boolean(true),
+				},
 			},
 		},
 	}
@@ -65,8 +222,12 @@ func TestStackTop(t *testing.T) {
 
 				switch expected := test.top.(type) {
 				case object.Number:
-					if expected != vm.StackTop() {
-						t.Fatalf("test[%d] - vm.StackTop() ==> expected: <%f> but was: <%f>", i, expected, vm.StackTop())
+					if expected != vm.LastPopInstruction() {
+						t.Fatalf("test[%d] - vm.StackTop() ==> expected: <%f> but was: <%f>", i, expected, vm.LastPopInstruction())
+					}
+				case object.Boolean:
+					if expected != vm.LastPopInstruction() {
+						t.Fatalf("test[%d] - vm.StackTop() ==> expected: <%t> but was: <%t>", i, expected, vm.LastPopInstruction())
 					}
 				default:
 					t.Fatalf("test[%d] ==> unexpected constant type: %T", i, test.top)

@@ -10,7 +10,7 @@ import (
 )
 
 type Compiler struct {
-	nodes *util.Stack[CompilerStackItem]
+	items *util.Stack[CompilerStackItem]
 
 	chunk *Chunk
 }
@@ -19,25 +19,26 @@ type StackItemType int
 
 const (
 	NODE_ITEM StackItemType = iota
-	OPERATOR_ITEM
+	OP_CODE_ITEM
 )
 
 type CompilerStackItem interface {
 	Type() StackItemType
 }
 
-func (n *NodeItem) Type() StackItemType {
-	return NODE_ITEM
-}
-func (o OperatorItem) Type() StackItemType {
-	return OPERATOR_ITEM
-}
-
 type NodeItem struct {
 	node ast.Node
 }
 
-type OperatorItem string
+func (n *NodeItem) Type() StackItemType {
+	return NODE_ITEM
+}
+
+type OpCodeItem code.OpCode
+
+func (o OpCodeItem) Type() StackItemType {
+	return OP_CODE_ITEM
+}
 
 type Chunk struct {
 	Bytecode  code.Bytecode
@@ -49,7 +50,7 @@ func NewCompiler(node ast.Node) *Compiler {
 	nodes.Push(&NodeItem{node})
 
 	return &Compiler{
-		nodes: nodes,
+		items: nodes,
 		chunk: &Chunk{
 			Bytecode:  code.Bytecode{},
 			Constants: []object.Object{},
@@ -58,8 +59,8 @@ func NewCompiler(node ast.Node) *Compiler {
 }
 
 func (c *Compiler) Compile() (*Chunk, error) {
-	for c.nodes.Size() != 0 {
-		item := c.nodes.Pop()
+	for c.items.Size() != 0 {
+		item := c.items.Pop()
 
 		switch item.Type() {
 		case NODE_ITEM:
@@ -69,21 +70,55 @@ func (c *Compiler) Compile() (*Chunk, error) {
 			case ast.PROGRAM:
 				node := node.(*ast.Program)
 				for i := len(node.Statements) - 1; i >= 0; i-- {
-					c.nodes.Push(&NodeItem{node.Statements[i]})
+					c.items.Push(&NodeItem{node.Statements[i]})
 				}
 			case ast.ERROR:
 				return nil, fmt.Errorf("ERROR: %s\n", node.(*ast.Error).Message)
 			case ast.LET_DECLARATION:
 			case ast.RETURN_STATEMENT:
 			case ast.EXPRESSION_STATEMENT:
-				c.nodes.Push(&NodeItem{node.(*ast.ExpressionStatement).Expression})
+				c.items.Push(OpCodeItem(code.OP_POP))
+				c.items.Push(&NodeItem{node.(*ast.ExpressionStatement).Expression})
 			case ast.BLOCK_STATEMENT:
 			case ast.UNARY_EXPRESSION:
+				node := node.(*ast.UnaryExpression)
+				switch node.Operator {
+				case "-":
+					c.items.Push(OpCodeItem(code.OP_MINUS))
+				case "!":
+					c.items.Push(OpCodeItem(code.OP_BANG))
+				default:
+					return nil, fmt.Errorf("unexpected unary operator: %s\n", node.Operator)
+				}
+				c.items.Push(&NodeItem{node.Right})
 			case ast.BINARY_EXPRESSION:
 				node := node.(*ast.BinaryExpression)
-				c.nodes.Push(OperatorItem(node.Operator))
-				c.nodes.Push(&NodeItem{node.Right})
-				c.nodes.Push(&NodeItem{node.Left})
+				if node.Operator == "<" {
+					c.items.Push(OpCodeItem(code.OP_GREATER))
+					c.items.Push(&NodeItem{node.Left})
+					c.items.Push(&NodeItem{node.Right})
+				} else {
+					switch node.Operator {
+					case "+":
+						c.items.Push(OpCodeItem(code.OP_ADD))
+					case "-":
+						c.items.Push(OpCodeItem(code.OP_SUB))
+					case "*":
+						c.items.Push(OpCodeItem(code.OP_MUL))
+					case "/":
+						c.items.Push(OpCodeItem(code.OP_DIV))
+					case "==":
+						c.items.Push(OpCodeItem(code.OP_EQUAL))
+					case "!=":
+						c.items.Push(OpCodeItem(code.OP_NOT_EQUAL))
+					case ">":
+						c.items.Push(OpCodeItem(code.OP_GREATER))
+					default:
+						return nil, fmt.Errorf("unexpected binary operator: %s\n", node.Operator)
+					}
+					c.items.Push(&NodeItem{node.Right})
+					c.items.Push(&NodeItem{node.Left})
+				}
 			case ast.LOGICAL_EXPRESSION:
 			case ast.CONDITIONAL_EXPRESSION:
 			case ast.FUNCTION_LITERAL:
@@ -95,6 +130,11 @@ func (c *Compiler) Compile() (*Chunk, error) {
 				constant := object.Number(node.(*ast.NumberLiteral).Value)
 				c.emit(code.OP_CONSTANT, c.makeConstant(constant))
 			case ast.BOOLEAN_LITERAL:
+				if node.(*ast.BooleanLiteral).Value {
+					c.emit(code.OP_TRUE)
+				} else {
+					c.emit(code.OP_FALSE)
+				}
 			case ast.STRING_LITERAL:
 			case ast.ARRAY_LITERAL:
 			case ast.HASH_LITERAL:
@@ -102,13 +142,8 @@ func (c *Compiler) Compile() (*Chunk, error) {
 			default:
 				return nil, fmt.Errorf("unexpected node type: %T", node.Type())
 			}
-		case OPERATOR_ITEM:
-			switch item.(OperatorItem) {
-			case "+":
-				c.emit(code.OP_ADD)
-			default:
-				return nil, fmt.Errorf("unexpected operator: %s\n", item)
-			}
+		case OP_CODE_ITEM:
+			c.emit(code.OpCode(item.(OpCodeItem)))
 		default:
 			return nil, fmt.Errorf("unexpected item type: %T", item.Type())
 		}

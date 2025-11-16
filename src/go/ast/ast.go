@@ -580,7 +580,7 @@ func (nl *NullLiteral) String() string {
 	return nl.Token.Literal
 }
 
-var nodes = map[NodeType]string{
+var nodes = [...]string{
 	PROGRAM:                "PROGRAM",
 	ERROR:                  "ERROR",
 	LET_DECLARATION:        "LET_DECLARATION",

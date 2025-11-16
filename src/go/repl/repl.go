@@ -65,6 +65,6 @@ func Start(in io.Reader, out io.Writer) {
 			fmt.Fprintf(out, "execution error: %s\n", err)
 		}
 
-		io.WriteString(out, vm.StackTop().Inspect()+"\n")
+		io.WriteString(out, vm.LastPopInstruction().Inspect()+"\n")
 	}
 }

@@ -11,6 +11,17 @@ type OpCode byte
 const (
 	OP_CONSTANT OpCode = iota
 	OP_ADD
+	OP_POP
+	OP_SUB
+	OP_MUL
+	OP_DIV
+	OP_TRUE
+	OP_FALSE
+	OP_EQUAL
+	OP_NOT_EQUAL
+	OP_GREATER
+	OP_MINUS
+	OP_BANG
 )
 
 type Definition struct {
@@ -19,20 +30,55 @@ type Definition struct {
 }
 
 var definitions = map[OpCode]*Definition{
-	OP_CONSTANT: {"OP_CONSTANT", []int{2}},
-	OP_ADD:      {"OP_ADD", []int{}},
+	OP_CONSTANT:  {"OP_CONSTANT", []int{2}},
+	OP_ADD:       {"OP_ADD", []int{}},
+	OP_POP:       {"OP_POP", []int{}},
+	OP_SUB:       {"OP_SUB", []int{}},
+	OP_MUL:       {"OP_MUL", []int{}},
+	OP_DIV:       {"OP_DIV", []int{}},
+	OP_TRUE:      {"OP_TRUE", []int{}},
+	OP_FALSE:     {"OP_FALSE", []int{}},
+	OP_EQUAL:     {"OP_EQUAL", []int{}},
+	OP_NOT_EQUAL: {"OP_NOT_EQUAL", []int{}},
+	OP_GREATER:   {"OP_GREATER", []int{}},
+	OP_MINUS:     {"OP_MINUS", []int{}},
+	OP_BANG:      {"OP_BANG", []int{}},
 }
 
 func Lookup(op byte) (*Definition, error) {
 	def, ok := definitions[OpCode(op)]
 	if !ok {
-		return nil, fmt.Errorf("unexpected opcode: %d", op)
+		return nil, fmt.Errorf("unexpected opcode: %s", OpCode(op))
 	}
 	return def, nil
 }
 
 type Bytecode []byte
 type Instruction []byte
+
+func (ins Bytecode) Disassemble() string {
+	var out bytes.Buffer
+
+	i := 0
+	for i < len(ins) {
+		def, err := Lookup(ins[i])
+		if err != nil {
+			fmt.Fprintf(&out, "ERROR: %s\n", err)
+			continue
+		}
+
+		read := 1
+		for _, width := range def.OperandWidths {
+			read += width
+		}
+
+		fmt.Fprintf(&out, "%04d %s\n", i, Instruction(ins[i:i+read]))
+
+		i += read
+	}
+
+	return out.String()
+}
 
 func (ins Instruction) String() string {
 	def, err := Lookup(byte(ins[0]))
@@ -112,26 +158,22 @@ func Concat(ins []Instruction) Bytecode {
 	return bytecode
 }
 
-func Disassemble(ins Bytecode) string {
-	var out bytes.Buffer
+var codes = [...]string{
+	OP_CONSTANT:  "OP_CONSTANT",
+	OP_ADD:       "OP_ADD",
+	OP_POP:       "OP_POP",
+	OP_SUB:       "OP_SUB",
+	OP_MUL:       "OP_MUL",
+	OP_DIV:       "OP_DIV",
+	OP_TRUE:      "OP_TRUE",
+	OP_FALSE:     "OP_FALSE",
+	OP_EQUAL:     "OP_EQUAL",
+	OP_NOT_EQUAL: "OP_NOT_EQUAL",
+	OP_GREATER:   "OP_GREATER",
+	OP_MINUS:     "OP_MINUS",
+	OP_BANG:      "OP_BANG",
+}
 
-	i := 0
-	for i < len(ins) {
-		def, err := Lookup(ins[i])
-		if err != nil {
-			fmt.Fprintf(&out, "ERROR: %s\n", err)
-			continue
-		}
-
-		read := 1
-		for _, width := range def.OperandWidths {
-			read += width
-		}
-
-		fmt.Fprintf(&out, "%04d %s\n", i, Instruction(ins[i:i+read]).String())
-
-		i += read
-	}
-
-	return out.String()
+func (oc OpCode) String() string {
+	return codes[oc]
 }

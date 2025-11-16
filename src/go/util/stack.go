@@ -44,7 +44,7 @@ func (s *Stack[T]) Size() int {
 func (s *Stack[T]) grow() {
 	l := len(s.es)
 	if l+1 >= cap(s.es) {
-		s.es = append(s.es, make([]T, (cap(s.es)<<1)+cap(s.es))...)
+		s.es = append(make([]T, 0, (cap(s.es)<<1)+cap(s.es)), s.es...)
 	}
 	s.es = s.es[:l+1]
 }

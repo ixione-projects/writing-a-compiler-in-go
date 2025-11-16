@@ -15,66 +15,218 @@ type CompilerTest struct {
 }
 
 func TestCompile(t *testing.T) {
-	tests := []CompilerTest{
+	suites := []struct {
+		name  string
+		tests []CompilerTest
+	}{
 		{
-			input:     `1 + 2`,
-			constants: []object.Object{object.Number(1), object.Number(2)},
-			instructions: []code.Instruction{
-				code.Make(code.OP_CONSTANT, 0),
-				code.Make(code.OP_CONSTANT, 1),
-				code.Make(code.OP_ADD),
+			name: "TestNumberExpression",
+			tests: []CompilerTest{
+				{
+					input:     `1 + 2`,
+					constants: []object.Object{object.Number(1), object.Number(2)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_ADD),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `1; 2`,
+					constants: []object.Object{object.Number(1), object.Number(2)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_POP),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `1 - 2`,
+					constants: []object.Object{object.Number(1), object.Number(2)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_SUB),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `1 * 2`,
+					constants: []object.Object{object.Number(1), object.Number(2)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_MUL),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `2 / 1`,
+					constants: []object.Object{object.Number(2), object.Number(1)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_DIV),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `-1`,
+					constants: []object.Object{object.Number(1)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_MINUS),
+						code.Make(code.OP_POP),
+					},
+				},
+			},
+		},
+		{
+			name: "TestBooleanExpression",
+			tests: []CompilerTest{
+				{
+					input:     `true`,
+					constants: []object.Object{},
+					instructions: []code.Instruction{
+						code.Make(code.OP_TRUE),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `false`,
+					constants: []object.Object{},
+					instructions: []code.Instruction{
+						code.Make(code.OP_FALSE),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `1 > 2`,
+					constants: []object.Object{object.Number(1), object.Number(2)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_GREATER),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `1 < 2`,
+					constants: []object.Object{object.Number(2), object.Number(1)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_GREATER),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `1 == 2`,
+					constants: []object.Object{object.Number(1), object.Number(2)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_EQUAL),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `1 != 2`,
+					constants: []object.Object{object.Number(1), object.Number(2)},
+					instructions: []code.Instruction{
+						code.Make(code.OP_CONSTANT, 0),
+						code.Make(code.OP_CONSTANT, 1),
+						code.Make(code.OP_NOT_EQUAL),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `true == false`,
+					constants: []object.Object{},
+					instructions: []code.Instruction{
+						code.Make(code.OP_TRUE),
+						code.Make(code.OP_FALSE),
+						code.Make(code.OP_EQUAL),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `true != false`,
+					constants: []object.Object{},
+					instructions: []code.Instruction{
+						code.Make(code.OP_TRUE),
+						code.Make(code.OP_FALSE),
+						code.Make(code.OP_NOT_EQUAL),
+						code.Make(code.OP_POP),
+					},
+				},
+				{
+					input:     `!true`,
+					constants: []object.Object{},
+					instructions: []code.Instruction{
+						code.Make(code.OP_TRUE),
+						code.Make(code.OP_BANG),
+						code.Make(code.OP_POP),
+					},
+				},
 			},
 		},
 	}
 
-	for i, test := range tests {
-		p := parser.NewParser(test.input, false)
-		program := p.ParseProgram()
+	for _, suite := range suites {
+		t.Run(suite.name, func(t *testing.T) {
+			for i, test := range suite.tests {
+				p := parser.NewParser(test.input, false)
+				program := p.ParseProgram()
 
-		if 0 != len(p.Errors()) {
-			t.Errorf("test[%d] - len(p.Errors()) ==> expected: <%d> but was: <%d>", i, 0, len(p.Errors()))
-			for j, msg := range p.Errors() {
-				t.Errorf("--------- p.Errors()[%d]: %s", j, msg)
-			}
-			t.Fatalf("test[%d] - %s", i, test.input)
-		}
+				if 0 != len(p.Errors()) {
+					t.Errorf("test[%d] - len(p.Errors()) ==> expected: <%d> but was: <%d>", i, 0, len(p.Errors()))
+					for j, msg := range p.Errors() {
+						t.Errorf("--------- p.Errors()[%d]: %s", j, msg)
+					}
+					t.Fatalf("test[%d] - %s", i, test.input)
+				}
 
-		c := NewCompiler(program)
-		chunk, err := c.Compile()
-		if err != nil {
-			t.Fatalf("test[%d] - Compile(program) ==> expected: not <%#v>", i, err)
-		}
+				c := NewCompiler(program)
+				chunk, err := c.Compile()
+				if err != nil {
+					t.Fatalf("test[%d] - Compile(program) ==> expected: not <%#v>", i, err)
+				}
 
-		fail := false
-		for j, expected := range test.constants {
-			switch expected := expected.(type) {
-			case object.Number:
-				if expected != chunk.Constants[j] {
-					t.Errorf("test[%d] - Constants[%d] ==> expected: <%f> but was: <%f>", i, j, expected, chunk.Constants[j])
+				fail := false
+				for j, expected := range test.constants {
+					switch expected := expected.(type) {
+					case object.Number:
+						if expected != chunk.Constants[j] {
+							t.Errorf("test[%d] - Constants[%d] ==> expected: <%f> but was: <%f>", i, j, expected, chunk.Constants[j])
+							fail = true
+						}
+					default:
+						t.Errorf("test[%d] - Constants[%d] ==> unexpected constant type: %T", i, j, expected)
+						fail = true
+					}
+				}
+
+				bytecode := code.Concat(test.instructions)
+
+				if len(bytecode) != len(chunk.Bytecode) {
+					t.Errorf("test[%d] - len(bytecode.Instructions) ==> expected: <%d> but was: <%d>", i, len(bytecode), len(chunk.Bytecode))
 					fail = true
 				}
-			default:
-				t.Errorf("test[%d] - Constants[%d] ==> unexpected constant type: %T", i, j, expected)
-				fail = true
+
+				for j, code := range bytecode {
+					if code != chunk.Bytecode[j] {
+						t.Errorf("test[%d] - Instructions[%d] ==> expected: <%d> but was: <%d>", i, j, code, chunk.Bytecode[j])
+						fail = true
+					}
+				}
+
+				if fail {
+					t.FailNow()
+				}
 			}
-		}
-
-		bytecode := code.Concat(test.instructions)
-
-		if len(bytecode) != len(chunk.Bytecode) {
-			t.Errorf("test[%d] - len(bytecode.Instructions) ==> expected: <%d> but was: <%d>", i, len(bytecode), len(chunk.Bytecode))
-			fail = true
-		}
-
-		for j, code := range bytecode {
-			if code != chunk.Bytecode[j] {
-				t.Errorf("test[%d] - Instructions[%d] ==> expected: <%d> but was: <%d>", i, j, code, chunk.Bytecode[j])
-				fail = true
-			}
-		}
-
-		if fail {
-			t.FailNow()
-		}
+		})
 	}
 }
