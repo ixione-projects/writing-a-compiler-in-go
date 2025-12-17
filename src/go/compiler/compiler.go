@@ -32,9 +32,9 @@ func NewCompiler(node ast.Node) *Compiler {
 	}
 }
 
-func NewCompilerWithState(node ast.Node, symbols *SymbolTable, constants []object.Object) *Compiler {
+func NewCompilerWithState(program *ast.Program, symbols *SymbolTable, constants []object.Object) *Compiler {
 	return &Compiler{
-		node:    node,
+		node:    program,
 		symbols: symbols,
 		chunk: &Chunk{
 			Bytecode:  code.Bytecode{},
@@ -43,92 +43,22 @@ func NewCompilerWithState(node ast.Node, symbols *SymbolTable, constants []objec
 	}
 }
 
-func (c *Compiler) Compile() (*Chunk, error) {
+func (c *Compiler) CompileProgram() (*Chunk, error) {
 	if c.node == nil {
 		return c.chunk, nil
 	}
 
-	switch c.node.Type() {
-	case ast.PROGRAM:
-		err := c.compileProgram()
-		if err != nil {
-			return nil, err
-		}
-	case ast.ERROR:
-		return nil, fmt.Errorf("ERROR: %s\n", c.node.(*ast.Error).Message)
-	case ast.LET_DECLARATION:
-		err := c.compileLetStatement()
-		if err != nil {
-			return nil, err
-		}
-	case ast.RETURN_STATEMENT:
-	case ast.EXPRESSION_STATEMENT:
-		err := c.compileExpressionStatement()
-		if err != nil {
-			return nil, err
-		}
-	case ast.BLOCK_STATEMENT:
-		err := c.compileBlockStatement()
-		if err != nil {
-			return nil, err
-		}
-	case ast.UNARY_EXPRESSION:
-		err := c.compileUnaryExpression()
-		if err != nil {
-			return nil, err
-		}
-	case ast.BINARY_EXPRESSION:
-		err := c.compileBinaryExpression()
-		if err != nil {
-			return nil, err
-		}
-	case ast.LOGICAL_EXPRESSION:
-	case ast.CONDITIONAL_EXPRESSION:
-		err := c.compileConditionalExpression()
-		if err != nil {
-			return nil, err
-		}
-	case ast.FUNCTION_LITERAL:
-	case ast.ASSIGNMENT_EXPRESSION:
-	case ast.CALL_EXPRESSION:
-	case ast.SUBSCRIPT_EXPRESSION:
-	case ast.IDENTIFIER:
-		err := c.compileIdentifier()
-		if err != nil {
-			return nil, err
-		}
-	case ast.NUMBER_LITERAL:
-		constant := object.Number(c.node.(*ast.NumberLiteral).Value)
-		c.emit(code.OP_CONSTANT, c.makeConstant(constant))
-	case ast.BOOLEAN_LITERAL:
-		if c.node.(*ast.BooleanLiteral).Value {
-			c.emit(code.OP_TRUE)
-		} else {
-			c.emit(code.OP_FALSE)
-		}
-	case ast.STRING_LITERAL:
-	case ast.ARRAY_LITERAL:
-	case ast.HASH_LITERAL:
-	case ast.NULL_LITERAL:
-		c.emit(code.OP_NULL)
-	default:
-		return nil, fmt.Errorf("unexpected node type: %T", c.node.Type())
-	}
-
-	c.node = nil
-	return c.chunk, nil
-}
-
-func (c *Compiler) compileProgram() error {
 	program := c.node.(*ast.Program)
 	for _, stmt := range program.Statements {
 		c.node = stmt
 		err := c.compileStatement()
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+
+	c.node = nil
+	return c.chunk, nil
 }
 
 func (c *Compiler) compileStatement() error {

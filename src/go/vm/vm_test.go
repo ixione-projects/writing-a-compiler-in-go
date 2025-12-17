@@ -275,7 +275,7 @@ func TestStackTop(t *testing.T) {
 				}
 
 				c := compiler.NewCompiler(program)
-				chunk, err := c.Compile()
+				chunk, err := c.CompileProgram()
 				if err != nil {
 					t.Fatalf("test[%d] - Compile(program) ==> expected: not <%#v>", i, err)
 				}

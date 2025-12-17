@@ -18,6 +18,7 @@ const (
 	OP_EQUAL
 	OP_NOT_EQUAL
 	OP_GREATER
+	OP_LESS
 	OP_MINUS
 	OP_BANG
 	OP_JUMP_NOT_TRUTHY
@@ -44,6 +45,7 @@ var definitions = map[OpCode]*Definition{
 	OP_EQUAL:           {"OP_EQUAL", []int{}},
 	OP_NOT_EQUAL:       {"OP_NOT_EQUAL", []int{}},
 	OP_GREATER:         {"OP_GREATER", []int{}},
+	OP_LESS:            {"OP_LESS", []int{}},
 	OP_MINUS:           {"OP_MINUS", []int{}},
 	OP_BANG:            {"OP_BANG", []int{}},
 	OP_JUMP_NOT_TRUTHY: {"OP_JUMP_NOT_TRUTHY", []int{2}},
@@ -178,6 +180,7 @@ var codes = [...]string{
 	OP_EQUAL:           "OP_EQUAL",
 	OP_NOT_EQUAL:       "OP_NOT_EQUAL",
 	OP_GREATER:         "OP_GREATER",
+	OP_LESS:            "OP_LESS",
 	OP_MINUS:           "OP_MINUS",
 	OP_BANG:            "OP_BANG",
 	OP_JUMP_NOT_TRUTHY: "OP_JUMP_NOT_TRUTHY",
